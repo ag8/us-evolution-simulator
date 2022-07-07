@@ -97,7 +97,15 @@ function colorMap() {
 
         let currentState = currentCounty.state;
 
-        let color = rainbow(56, parseInt(currentState, 10));
+        let color = "";
+
+        if (currentState === "17") {
+            color = "#7128b6";
+        } else if (currentState === "18") {
+            color = "#FFFF00";
+        } else {
+            color = rainbow(57, parseInt(currentState, 10));
+        }
 
         let id = "c" + currentCounty.id;
 
