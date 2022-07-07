@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Woohoo!</title>
+</head>
+<body>
+<script src="data.min.js"></script>
+<script>
+    const dataObj = JSON.parse(data);
+
+    console.log(dataObj);
+    console.log("HI!");
+
+
+    function calculateLean(state) {
+        let stateRepublicans = 0;
+        let stateDemocrats = 0;
+
+        for (let i = 0; i < COUNTIES.length; i++) {
+            let currentCounty = dataObj[COUNTIES[i]];
+
+            if (currentCounty.state === state) {
+                let l = currentCounty.vote_lean_r;
+                let p = currentCounty.population;
+
+                let r = p * (l + 1) / 2;
+                let d = p - r;
+
+                stateRepublicans += r;
+                stateDemocrats += d;
+            }
+        }
+
+        return (stateRepublicans - stateDemocrats) / (stateRepublicans + stateDemocrats);
+    }
+
+    function calculateLeanForAllStates() {
+        let dict = new Map();
+
+        for (let i = 0; i < STATES.length; i++) {
+            let currentState = STATES[i];
+
+            let lean = calculateLean(currentState);
+            dict.set(currentState.toString(), lean);
+        }
+
+        return dict;
+    }
+
+
+    function timeStep() {
+        let stateLeans = calculateLeanForAllStates();
+
+        // For each county, determine if it wants to join a neighbouring state.
+        for (let i = 0; i < COUNTIES.length; i++) {
+            let currentCounty = dataObj[COUNTIES[i]];
+
+            let currentState = currentCounty.state;
+            let potentialNewStates = [];
+
+            // First, check if it borders any other states to begin with.
+            let adjacents = currentCounty.adjacents;
+            for (let j = 0; j < adjacents.length; j++) {
+                let adjacentCountyState = dataObj[adjacents[j]].state;
+                if (adjacentCountyState !== currentState) {
+                    potentialNewStates.push(adjacentCountyState);
+                }
+            }
+
+            potentialNewStates = [...new Set(potentialNewStates)];
+
+            if (potentialNewStates.length === 0) {  // If there's no states to switch to, skip this county
+                continue;
+            }
+
+            // console.log("County " + currentCounty.name + " is considering switching to " + potentialNewStates);
+
+            for (let j = 0; j < potentialNewStates.length; j++) {
+                let currentPotentialNewState = potentialNewStates[j];
+
+                let currentLean = stateLeans.get(currentState);
+                let potentialNewLean = stateLeans.get(currentPotentialNewState);
+
+                let countyLean = currentCounty.vote_lean_r;
+
+                // If the new state is closer, express a desire to switch to it
+                if (Math.abs(countyLean - potentialNewLean) < Math.abs(countyLean - currentLean)) {
+                    console.log("----------------------------------------------");
+                    console.log("County " + currentCounty.name + " has seceded from " + currentState + "!!");
+                    console.log("The county's current lean: " + countyLean.toFixed(2));
+                    console.log("The old state's lean     : " + currentLean.toFixed(2));
+                    console.log("The new state's lean     : " + potentialNewLean.toFixed(2));
+                    console.log("----------------------------------------------");
+                } else {
+                    // console.log("----------------------------------------------");
+                    // console.log("County " + currentCounty.name + " has NOT seceded from " + currentState + "!!");
+                    // console.log("The county's current lean: " + countyLean.toFixed(2));
+                    // console.log("The old state's lean     : " + currentLean.toFixed(2));
+                    // console.log("The new state's lean     : " + potentialNewLean.toFixed(2));
+                    // console.log("----------------------------------------------");
+                }
+            }
+        }
+    }
+</script>
+</body>
+</html>
