@@ -3,6 +3,7 @@ const dataObj = JSON.parse(data);
 console.log(dataObj);
 console.log("HI!");
 
+const threshold = 0.3;
 
 function calculateLean(state) {
     let stateRepublicans = 0;
@@ -103,13 +104,19 @@ function colorMap() {
             color = "#7128b6";
         } else if (currentState === "18") {
             color = "#FFFF00";
+        } else if (currentState === "12") {
+            color = "#e7e710";
+        } else if (currentState === "51") {
+            color = "#ff7300";
+        } else if (currentState === "39") {
+            color = "#009dff";
         } else {
             color = rainbow(57, parseInt(currentState, 10));
         }
 
         let id = "c" + currentCounty.id;
 
-        console.log("Attempting id " + id);
+        // console.log("Attempting id " + id);
 
         if (document.getElementById(id) != null) { // Bedford city, VA or something
             document.getElementById(id).style.fill = color;
@@ -145,30 +152,53 @@ function timeStep() {
 
         // console.log("County " + currentCounty.name + " is considering switching to " + potentialNewStates);
 
+        let currentLean = stateLeans.get(currentState);
+        let countyLean = currentCounty.vote_lean_r;
+
+        let bestNewPotentialState = potentialNewStates[0];
+        let bestLeanDiff = 100.5;
+
         for (let j = 0; j < potentialNewStates.length; j++) {
             let currentPotentialNewState = potentialNewStates[j];
 
-            let currentLean = stateLeans.get(currentState);
             let potentialNewLean = stateLeans.get(currentPotentialNewState);
 
-            let countyLean = currentCounty.vote_lean_r;
+            let leanDiff = Math.abs(countyLean - potentialNewLean);
 
             // If the new state is closer, express a desire to switch to it
-            if (Math.abs(countyLean - potentialNewLean) < Math.abs(countyLean - currentLean)) {
-                console.log("----------------------------------------------");
-                console.log("County " + currentCounty.name + " has seceded from " + currentState + "!!");
-                console.log("The county's current lean: " + countyLean.toFixed(2));
-                console.log("The old state's lean     : " + currentLean.toFixed(2));
-                console.log("The new state's lean     : " + potentialNewLean.toFixed(2));
-                console.log("----------------------------------------------");
-            } else {
-                // console.log("----------------------------------------------");
-                // console.log("County " + currentCounty.name + " has NOT seceded from " + currentState + "!!");
-                // console.log("The county's current lean: " + countyLean.toFixed(2));
-                // console.log("The old state's lean     : " + currentLean.toFixed(2));
-                // console.log("The new state's lean     : " + potentialNewLean.toFixed(2));
-                // console.log("----------------------------------------------");
+            if (leanDiff < bestLeanDiff) {
+                bestNewPotentialState = currentPotentialNewState;
+                bestLeanDiff = leanDiff;
             }
+        }
+
+        // A state only switches to a different state if the "improvement" is good enough.
+        let currentUnhappiness = Math.abs(countyLean - currentLean);
+        let newUnhappiness = Math.abs(countyLean - stateLeans.get(bestNewPotentialState));  // = bestLeanDiff
+        let worthIt = currentUnhappiness - newUnhappiness > threshold
+
+        if (bestLeanDiff < Math.abs(countyLean - currentLean) && worthIt) {  // If the best state to switch to is worth it
+            // Switch to the new state
+            currentCounty.desiredState = bestNewPotentialState;
+
+            // Report it
+            console.log("----------------------------------------------");
+            console.log("County " + currentCounty.name + " has seceded from " + getStateName(currentState) + " and joined " + getStateName(bestNewPotentialState) + "!!");
+            console.log("The county's current lean: " + countyLean.toFixed(2));
+            console.log("The old state's lean     : " + currentLean.toFixed(2));
+            console.log("The new state's lean     : " + stateLeans.get(bestNewPotentialState).toFixed(2));
+            console.log("----------------------------------------------");
+        }
+    }
+
+    // Once all the counties vote, update all the states that they're in
+    for (let i = 0; i < COUNTIES.length; i++) {
+        let currentCounty = dataObj[COUNTIES[i]];
+
+        if (currentCounty.desiredState != null) {
+            currentCounty.state = currentCounty.desiredState;
+
+            document.getElementById("c" + currentCounty.id).childNodes[1].textContent = getLabel(currentCounty);
         }
     }
 }
