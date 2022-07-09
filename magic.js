@@ -3,7 +3,8 @@ const dataObj = JSON.parse(data);
 console.log(dataObj);
 console.log("HI!");
 
-const threshold = 0.3;
+const threshold = 0.0;
+const reabsorption = true;
 
 function calculateLean(state) {
     let stateRepublicans = 0;
@@ -199,6 +200,42 @@ function timeStep() {
             currentCounty.state = currentCounty.desiredState;
 
             document.getElementById("c" + currentCounty.id).childNodes[1].textContent = getLabel(currentCounty);
+        }
+    }
+
+    // If reabsorption is turned on, each county that's surrounded by a different state joins it
+    if (reabsorption) {
+        for (let i = 0; i < COUNTIES.length; i++) {
+            let currentCounty = dataObj[COUNTIES[i]];
+
+            let surroundingStates = [];
+
+            // First, check if it borders any other states to begin with.
+            let adjacents = currentCounty.adjacents;
+            for (let j = 0; j < adjacents.length; j++) {
+                let adjacentCountyState = dataObj[adjacents[j]].state;
+
+                if (dataObj[adjacents[j]].id !== currentCounty.id) {
+                    // console.log(dataObj[adjacents[j]].id + " !== " + currentCounty.id);
+                    surroundingStates.push(adjacentCountyState);
+                }
+            }
+
+            // console.log("County " + currentCounty.name + " borders states " + surroundingStates);
+
+            if (surroundingStates.indexOf(currentCounty.state) === -1) {
+                let counts = surroundingStates.reduce((a, c) => {
+                    a[c] = (a[c] || 0) + 1;
+                    return a;
+                }, {});
+                let maxCount = Math.max(...Object.values(counts));
+                let mostFrequent = Object.keys(counts).filter(k => counts[k] === maxCount);
+
+                if (currentCounty.state !== mostFrequent) {
+                    // console.log("County " + currentCounty.name + " just got reabsorbed from " + getStateName(currentCounty.state) + " into " + getStateName(mostFrequent) + "!");
+                    currentCounty.state = mostFrequent;
+                }
+            }
         }
     }
 }
