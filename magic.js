@@ -5,6 +5,7 @@ console.log("HI!");
 
 const threshold = 0.0;
 const reabsorption = true;
+const requireConnectednessDumb = true;
 
 function calculateLean(state) {
     let stateRepublicans = 0;
@@ -126,6 +127,85 @@ function colorMap() {
 }
 
 
+function checkConnection(pairOfCounties, currentState, currentCounty) {
+    // We simply do a BFS.
+    let source = pairOfCounties[0];
+    let target = pairOfCounties[1];
+
+    let exploredIDs = [];
+
+    exploredIDs.push(source.id);
+
+    let q = [];
+    q.push(source);
+
+    while (q.length > 0) {
+        let v = q.shift();
+
+        if (v.id === target.id) {
+            return true;
+        }
+
+        let adjacents = v.adjacents;
+        for (let j = 0; j < adjacents.length; j++) {
+            let currAdj = dataObj[adjacents[j]];
+
+            // Ignore counties from other states
+            if (currAdj.state !== currentState) {
+                continue;
+            }
+
+            // Ignore the potentially seceding county
+            if (currAdj.id === currentCounty.id) {
+                continue;
+            }
+
+            if (exploredIDs.indexOf(currAdj.id) !== -1) {
+                exploredIDs.push(currAdj.id);
+                q.push(currAdj)
+            }
+        }
+    }
+
+    return false;
+}
+
+function checkIfSecessionWillBreakState(currentState, currentCounty) {
+    // Get the list of neighbours that are in the state.
+    let inStateNeighbours = [];
+
+    // First, check if it borders any other states to begin with.
+    let adjacents = currentCounty.adjacents;
+    for (let j = 0; j < adjacents.length; j++) {
+        let adjacentCountyState = dataObj[adjacents[j]].state;
+        if (adjacentCountyState === currentState && dataObj[adjacents[j]].id !== currentCounty.id) {
+            inStateNeighbours.push(dataObj[adjacents[j]]);
+        }
+    }
+
+    // Generate pairs of neighbours that should have paths between them
+    let pairs = [];
+
+    for (let j = 0; j < inStateNeighbours.length - 1; j++) {
+        pairs.push([inStateNeighbours[j], inStateNeighbours[j + 1]])
+    }
+    pairs.push([inStateNeighbours[inStateNeighbours.length - 1], inStateNeighbours[0]]);
+
+
+    // Check that each pair is connected even if the current county is missing
+    for (let j = 0; j < pairs.length; j++) {
+        let connected = checkConnection(pairs[j], currentState, currentCounty);
+
+        if (!connected) {
+            console.log("TRUEEE");
+            return true;
+        }
+    }
+
+    console.log("FALSEEE");
+    return false;
+}
+
 function timeStep() {
     let stateLeans = calculateLeanForAllStates();
 
@@ -179,16 +259,28 @@ function timeStep() {
         let worthIt = currentUnhappiness - newUnhappiness > threshold
 
         if (bestLeanDiff < Math.abs(countyLean - currentLean) && worthIt) {  // If the best state to switch to is worth it
-            // Switch to the new state
-            currentCounty.desiredState = bestNewPotentialState;
+            let secessionBreaks = false;
 
-            // Report it
-            console.log("----------------------------------------------");
-            console.log("County " + currentCounty.name + " has seceded from " + getStateName(currentState) + " and joined " + getStateName(bestNewPotentialState) + "!!");
-            console.log("The county's current lean: " + countyLean.toFixed(2));
-            console.log("The old state's lean     : " + currentLean.toFixed(2));
-            console.log("The new state's lean     : " + stateLeans.get(bestNewPotentialState).toFixed(2));
-            console.log("----------------------------------------------");
+            if (requireConnectednessDumb) {
+                // If connectedness is required, check for it.
+                // This is checked in the dumb way; that is, if this county and only this county leaves,
+                // will the state separate into two parts?
+
+                secessionBreaks = checkIfSecessionWillBreakState(currentState, currentCounty);
+            }
+
+            if (!secessionBreaks) {
+                // Switch to the new state
+                currentCounty.desiredState = bestNewPotentialState;
+
+                // Report it
+                console.log("----------------------------------------------");
+                console.log("County " + currentCounty.name + " has seceded from " + getStateName(currentState) + " and joined " + getStateName(bestNewPotentialState) + "!!");
+                console.log("The county's current lean: " + countyLean.toFixed(2));
+                console.log("The old state's lean     : " + currentLean.toFixed(2));
+                console.log("The new state's lean     : " + stateLeans.get(bestNewPotentialState).toFixed(2));
+                console.log("----------------------------------------------");
+            }
         }
     }
 
