@@ -3,8 +3,7 @@ const dataObj = JSON.parse(data);
 console.log(dataObj);
 console.log("HI!");
 
-const threshold = 0.30;
-const reabsorption = false;
+const threshold = 0.20;
 const requireConnectednessDumb = false;
 
 function calculateLean(state) {
@@ -203,6 +202,61 @@ function checkConnection(pairOfCounties, currentState, currentCounty) {
     return false;
 }
 
+function checkConnectionBig(pairOfCounties, state, secedingCounties) {
+    console.log("Running checkConnectionBig.");
+    console.log("Pair of counties:");
+    console.log(pairOfCounties);
+    console.log("State: " + state);
+    console.log("Seceding counties: ");
+    console.log(secedingCounties);
+
+    // We simply do a BFS.
+    let source = pairOfCounties[0];
+    let target = pairOfCounties[1];
+
+    let exploredIDs = [];
+
+    exploredIDs.push(source.id);
+
+    let q = [];
+    q.push(source);
+
+    while (q.length > 0) {
+        let v = q.shift();
+
+        if (v.id === target.id) {
+            return true;
+        }
+
+        let adjacents = v.adjacents;
+        for (let j = 0; j < adjacents.length; j++) {
+            let currAdj = dataObj[adjacents[j]];
+
+            // Ignore counties from other states
+            if (currAdj.state !== state) {
+                continue;
+            }
+
+            // Ignore the potentially seceding counties
+            if (secedingCounties.includes(currAdj.id)) {
+                continue;
+            }
+
+            // Ignore self-adjacencies
+            if (currAdj.id === v.id) {
+                continue;
+            }
+
+            if (exploredIDs.indexOf(currAdj.id) === -1) {
+                exploredIDs.push(currAdj.id);
+                q.push(currAdj)
+            }
+        }
+    }
+
+    return false;
+}
+
 function checkIfSecessionWillBreakState(currentState, currentCounty) {
     // Get the list of neighbours that are in the state.
     let inStateNeighbours = [];
@@ -220,7 +274,9 @@ function checkIfSecessionWillBreakState(currentState, currentCounty) {
     let pairs = [];
 
     for (let j = 0; j < inStateNeighbours.length - 1; j++) {
-        pairs.push([inStateNeighbours[j], inStateNeighbours[j + 1]])
+        if (!pairs.includes([inStateNeighbours[j], inStateNeighbours[j + 1]])) {
+            pairs.push([inStateNeighbours[j], inStateNeighbours[j + 1]])
+        }
     }
     pairs.push([inStateNeighbours[inStateNeighbours.length - 1], inStateNeighbours[0]]);
 
@@ -239,9 +295,87 @@ function checkIfSecessionWillBreakState(currentState, currentCounty) {
     return false;
 }
 
+function stateRemainsConnected(state, secedingCounties) {
+    console.log("We wish to check if state " + state + " remains connected with the secession of counties " + secedingCounties + ".");
+
+    // Get the list of neighbours that are in the state.
+    let stateCounties = getCountiesInState(state);
+
+    if (stateCounties.length - secedingCounties.length === 0) {
+        return false;
+    } else if (stateCounties.length - secedingCounties.length === 1) {
+        return true;
+    }
+
+    // We simply do a BFS.
+    let c = 0;
+    let source = stateCounties[c];
+    while (secedingCounties.includes(source.id)) {
+        source = stateCounties[++c];
+    }
+
+    let exploredIDs = [];
+
+    exploredIDs.push(source.id);
+
+    let q = [];
+    q.push(source);
+
+    while (q.length > 0) {
+        let v = q.shift();
+
+        let adjacents = v.adjacents;
+        for (let j = 0; j < adjacents.length; j++) {
+            let currAdj = dataObj[adjacents[j]];
+
+            // Ignore counties from other states
+            if (currAdj.state !== state) {
+                continue;
+            }
+
+            // Ignore the potentially seceding counties
+            if (secedingCounties.includes(currAdj.id)) {
+                continue;
+            }
+
+            // Ignore self-adjacencies
+            if (currAdj.id === v.id) {
+                continue;
+            }
+
+            if (exploredIDs.indexOf(currAdj.id) === -1) {
+                exploredIDs.push(currAdj.id);
+                q.push(currAdj)
+            }
+        }
+    }
+
+    // Number of counties we should have traversed
+    let numberOfCountiesWeShouldHaveVisited = stateCounties.length - secedingCounties.length;
+
+    // Number of counties we actually visited
+    let numberOfCountiesActuallyVisited = exploredIDs.length;
+
+    console.log("Answer: " + (numberOfCountiesWeShouldHaveVisited === numberOfCountiesActuallyVisited) + "");
+
+    // The state is connected if those two are equal
+    return numberOfCountiesWeShouldHaveVisited === numberOfCountiesActuallyVisited;
+}
+
+function getCountiesInState(state) {
+    let counties = [];
+
+    for (let i = 0; i < COUNTIES.length; i++) {
+        if (dataObj[COUNTIES[i]].state === state) {
+            counties.push(dataObj[COUNTIES[i]]);
+        }
+    }
+
+    return counties;
+}
+
 function timeStep() {
     let stateLeans = calculateLeanForAllStates();
-    let perStateStrongestSwitchLeans = new Array(57).fill(0.0);
 
     // For each county, determine if it wants to join a neighbouring state.
     for (let i = 0; i < COUNTIES.length; i++) {
@@ -316,35 +450,55 @@ function timeStep() {
                 console.log("The new state's lean     : " + stateLeans.get(bestNewPotentialState).toFixed(2));
                 console.log("----------------------------------------------");
             } else {
+                currentCounty.claimedImprovement = -1;
                 console.log("County " + currentCounty.name + " WOULD HAVE seceded from " + getStateName(currentState) + " and joined " + getStateName(bestNewPotentialState) + ", but that would break connectedness!");
             }
         }
     }
 
-    // Since only one county can secede per state per turn, figure out which county wants to do so the most
-    // for (let i = 0; i < COUNTIES.length; i++) {
-    //     let currentCounty = dataObj[COUNTIES[i]];
-    //     let currentStateNum = parseInt(currentCounty.state, 10);
-    //
-    //     if (currentCounty.desiredState != null) {
-    //         // Current strongest lean in this county's current state
-    //         let currentStrongestArgument = perStateStrongestSwitchLeans[currentStateNum];
-    //
-    //         // If it wants to secede more than the current most secessionist county, make it the top
-    //         if (currentCounty.claimedImprovement > currentStrongestArgument) {
-    //             perStateStrongestSwitchLeans[currentStateNum] = currentCounty.claimedImprovement;
-    //         } else {  // Otherwise, it doesn't get to secede
-    //             currentCounty.desiredState = null;
-    //             currentCounty.claimedImprovement = null;
-    //         }
-    //     }
-    // }
+    // Determine which counties can secede without breaking the state into disconnected components
+    let allSecedingCounties = [];
+    for (let i = 0; i < STATES.length; i++) {
+        let currentState = STATES[i];
+        let secedingCounties = [];
+
+        let currentStateCounties = getCountiesInState(currentState);
+
+        // Sort counties by their desire to secede
+        currentStateCounties.sort(function (a, b) {
+            return parseFloat(b.claimedImprovement) - parseFloat(a.claimedImprovement);
+        });
+
+        for (let county of currentStateCounties) {
+            if (county.claimedImprovement === null || county.claimedImprovement === undefined) {
+                continue;
+            }
+
+            // console.log("In state " + currentState + ", county " + county.name + " has desire to secede " + county.claimedImprovement);
+
+            if (county.claimedImprovement < 0) {  // TODO: check for threshold here or later?
+                break;
+            }
+
+            console.log("Real talk: In " + getStateName(currentState) + ", county " + county.name + " (" + county.id + ") is actually tryna leave if it can.");
+            let potentialNewSetOfSecessors = secedingCounties.slice();
+            potentialNewSetOfSecessors.push(county.id);
+
+            if (stateRemainsConnected(currentState, potentialNewSetOfSecessors)) {
+                secedingCounties.push(county.id);
+            }
+        }
+
+        allSecedingCounties.push.apply(allSecedingCounties, secedingCounties);
+    }
+
+    console.log("Counties actually seceding this turn: " + allSecedingCounties);
 
     // Once all the counties vote, update all the states that they're in
     for (let i = 0; i < COUNTIES.length; i++) {
         let currentCounty = dataObj[COUNTIES[i]];
 
-        if (currentCounty.desiredState != null) {
+        if (currentCounty.desiredState != null && allSecedingCounties.includes(currentCounty.id)) {
             if (currentCounty.id === "51515") {  // Bedford County, VA
                 continue;
             }
@@ -353,43 +507,10 @@ function timeStep() {
 
             document.getElementById("c" + currentCounty.id).childNodes[1].textContent = getLabel(currentCounty);
         }
-    }
 
-    // If reabsorption is turned on, each county that's surrounded by a different state joins it
-    // TODO: This breaks population somehow
-    if (reabsorption) {
-        for (let i = 0; i < COUNTIES.length; i++) {
-            let currentCounty = dataObj[COUNTIES[i]];
-
-            let surroundingStates = [];
-
-            // First, check if it borders any other states to begin with.
-            let adjacents = currentCounty.adjacents;
-            for (let j = 0; j < adjacents.length; j++) {
-                let adjacentCountyState = dataObj[adjacents[j]].state;
-
-                if (dataObj[adjacents[j]].id !== currentCounty.id) {
-                    // console.log(dataObj[adjacents[j]].id + " !== " + currentCounty.id);
-                    surroundingStates.push(adjacentCountyState);
-                }
-            }
-
-            // console.log("County " + currentCounty.name + " borders states " + surroundingStates);
-
-            if (surroundingStates.indexOf(currentCounty.state) === -1) {
-                let counts = surroundingStates.reduce((a, c) => {
-                    a[c] = (a[c] || 0) + 1;
-                    return a;
-                }, {});
-                let maxCount = Math.max(...Object.values(counts));
-                let mostFrequent = Object.keys(counts).filter(k => counts[k] === maxCount);
-
-                if (currentCounty.state !== mostFrequent) {
-                    // console.log("County " + currentCounty.name + " just got reabsorbed from " + getStateName(currentCounty.state) + " into " + getStateName(mostFrequent) + "!");
-                    currentCounty.state = mostFrequent;
-                }
-            }
-        }
+        // Reset county desires
+        currentCounty.desiredState = currentCounty.state;
+        currentCounty.claimedImprovement = -1;
     }
 }
 
@@ -414,7 +535,7 @@ function writeInfo() {
 
     document.getElementById("info").innerHTML = "(Total population: " + s.reduce((n, {population}) => n + population, 0) + ")<br>";
 
-    s.sort(function(a, b) {
+    s.sort(function (a, b) {
         return parseFloat(b.population) - parseFloat(a.population);
     });
 
