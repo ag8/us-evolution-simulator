@@ -4,7 +4,7 @@ console.log(dataObj);
 console.log("HI!");
 
 const threshold = 0.00;
-const requireConnectednessDumb = false;
+const requireConnectedness = true;
 
 function calculateLean(state) {
     let stateRepublicans = 0;
@@ -153,148 +153,6 @@ function colorMap() {
     }
 }
 
-
-function checkConnection(pairOfCounties, currentState, currentCounty) {
-    // We simply do a BFS.
-    let source = pairOfCounties[0];
-    let target = pairOfCounties[1];
-
-    let exploredIDs = [];
-
-    exploredIDs.push(source.id);
-
-    let q = [];
-    q.push(source);
-
-    while (q.length > 0) {
-        let v = q.shift();
-
-        if (v.id === target.id) {
-            return true;
-        }
-
-        let adjacents = v.adjacents;
-        for (let j = 0; j < adjacents.length; j++) {
-            let currAdj = dataObj[adjacents[j]];
-
-            // Ignore counties from other states
-            if (currAdj.state !== currentState) {
-                continue;
-            }
-
-            // Ignore the potentially seceding county
-            if (currAdj.id === currentCounty.id) {
-                continue;
-            }
-
-            // Ignore self-adjacencies
-            if (currAdj.id === v.id) {
-                continue;
-            }
-
-            if (exploredIDs.indexOf(currAdj.id) === -1) {
-                exploredIDs.push(currAdj.id);
-                q.push(currAdj)
-            }
-        }
-    }
-
-    return false;
-}
-
-function checkConnectionBig(pairOfCounties, state, secedingCounties) {
-    console.log("Running checkConnectionBig.");
-    console.log("Pair of counties:");
-    console.log(pairOfCounties);
-    console.log("State: " + state);
-    console.log("Seceding counties: ");
-    console.log(secedingCounties);
-
-    // We simply do a BFS.
-    let source = pairOfCounties[0];
-    let target = pairOfCounties[1];
-
-    let exploredIDs = [];
-
-    exploredIDs.push(source.id);
-
-    let q = [];
-    q.push(source);
-
-    while (q.length > 0) {
-        let v = q.shift();
-
-        if (v.id === target.id) {
-            return true;
-        }
-
-        let adjacents = v.adjacents;
-        for (let j = 0; j < adjacents.length; j++) {
-            let currAdj = dataObj[adjacents[j]];
-
-            // Ignore counties from other states
-            if (currAdj.state !== state) {
-                continue;
-            }
-
-            // Ignore the potentially seceding counties
-            if (secedingCounties.includes(currAdj.id)) {
-                continue;
-            }
-
-            // Ignore self-adjacencies
-            if (currAdj.id === v.id) {
-                continue;
-            }
-
-            if (exploredIDs.indexOf(currAdj.id) === -1) {
-                exploredIDs.push(currAdj.id);
-                q.push(currAdj)
-            }
-        }
-    }
-
-    return false;
-}
-
-function checkIfSecessionWillBreakState(currentState, currentCounty) {
-    // Get the list of neighbours that are in the state.
-    let inStateNeighbours = [];
-
-
-    let adjacents = currentCounty.adjacents;
-    for (let j = 0; j < adjacents.length; j++) {
-        let adjacentCountyState = dataObj[adjacents[j]].state;
-        if (adjacentCountyState === currentState && dataObj[adjacents[j]].id !== currentCounty.id) {
-            inStateNeighbours.push(dataObj[adjacents[j]]);
-        }
-    }
-
-    // Generate pairs of neighbours that should have paths between them
-    let pairs = [];
-
-    for (let j = 0; j < inStateNeighbours.length - 1; j++) {
-        if (!pairs.includes([inStateNeighbours[j], inStateNeighbours[j + 1]])) {
-            pairs.push([inStateNeighbours[j], inStateNeighbours[j + 1]])
-        }
-    }
-    pairs.push([inStateNeighbours[inStateNeighbours.length - 1], inStateNeighbours[0]]);
-
-
-    // Check that each pair is connected even if the current county is missing
-    for (let j = 0; j < pairs.length; j++) {
-        let connected = checkConnection(pairs[j], currentState, currentCounty);
-
-        if (!connected) {
-            console.log("TRUEEE");
-            return true;
-        }
-    }
-
-    console.log("FALSEEE");
-    return false;
-}
-
 function stateRemainsConnected(state, secedingCounties) {
     console.log("We wish to check if state " + state + " remains connected with the secession of counties " + secedingCounties + ".");
 
@@ -433,13 +291,13 @@ function timeStep() {
         if (bestLeanDiff < Math.abs(countyLean - currentLean) && worthIt) {  // If the best state to switch to is worth it
             let secessionBreaks = false;
 
-            if (requireConnectednessDumb) {
-                // If connectedness is required, check for it.
-                // This is checked in the dumb way; that is, if this county and only this county leaves,
-                // will the state separate into two parts?
-
-                secessionBreaks = checkIfSecessionWillBreakState(currentState, currentCounty);
-            }
+            // if (requireConnectednessDumb) {
+            //     // If connectedness is required, check for it.
+            //     // This is checked in the dumb way; that is, if this county and only this county leaves,
+            //     // will the state separate into two parts?
+            //
+            //     secessionBreaks = checkIfSecessionWillBreakState(currentState, currentCounty);
+            // }
 
             if (!secessionBreaks) { // If we can switch there without breaking connectedness
                 // Switch to the new state
@@ -462,42 +320,52 @@ function timeStep() {
 
     // Determine which counties can secede without breaking the state into disconnected components
     let allSecedingCounties = [];
-    for (let i = 0; i < STATES.length; i++) {
-        let currentState = STATES[i];
-        let secedingCounties = [];
+    if (requireConnectedness) {
+        for (let i = 0; i < STATES.length; i++) {
+            let currentState = STATES[i];
+            let secedingCounties = [];
 
-        if (currentState === "02" || currentState === "15") {  // Alaska and Hawaii
-            continue;
-        }
-
-        let currentStateCounties = getCountiesInState(currentState);
-
-        // Sort counties by their desire to secede
-        currentStateCounties.sort(function (a, b) {
-            return parseFloat(b.claimedImprovement) - parseFloat(a.claimedImprovement);
-        });
-
-        for (let county of currentStateCounties) {
-            if (county.claimedImprovement === null || county.claimedImprovement === undefined) {
+            if (currentState === "02" || currentState === "15") {  // Alaska and Hawaii
                 continue;
             }
 
-            // console.log("In state " + currentState + ", county " + county.name + " has desire to secede " + county.claimedImprovement);
+            let currentStateCounties = getCountiesInState(currentState);
 
-            if (county.claimedImprovement < 0) {  // TODO: check for threshold here or later?
-                break;
+            // Sort counties by their desire to secede
+            currentStateCounties.sort(function (a, b) {
+                return parseFloat(b.claimedImprovement) - parseFloat(a.claimedImprovement);
+            });
+
+            for (let county of currentStateCounties) {
+                if (county.claimedImprovement === null || county.claimedImprovement === undefined) {
+                    continue;
+                }
+
+                // console.log("In state " + currentState + ", county " + county.name + " has desire to secede " + county.claimedImprovement);
+
+                if (county.claimedImprovement < 0) {  // TODO: check for threshold here or later?
+                    break;
+                }
+
+                console.log("Real talk: In " + getStateName(currentState) + ", county " + county.name + " (" + county.id + ") is actually tryna leave if it can.");
+                let potentialNewSetOfSecessors = secedingCounties.slice();
+                potentialNewSetOfSecessors.push(county.id);
+
+                if (stateRemainsConnected(currentState, potentialNewSetOfSecessors)) {
+                    secedingCounties.push(county.id);
+                }
             }
 
-            console.log("Real talk: In " + getStateName(currentState) + ", county " + county.name + " (" + county.id + ") is actually tryna leave if it can.");
-            let potentialNewSetOfSecessors = secedingCounties.slice();
-            potentialNewSetOfSecessors.push(county.id);
-
-            if (stateRemainsConnected(currentState, potentialNewSetOfSecessors)) {
-                secedingCounties.push(county.id);
+            allSecedingCounties.push.apply(allSecedingCounties, secedingCounties);
+        }
+    } else {
+        for (let i = 0; i < COUNTIES.length; i++) {
+            if (dataObj[COUNTIES[i]].desiredState != null) {
+                if (dataObj[COUNTIES[i]].state !== "02" && dataObj[COUNTIES[i]].state !== "15") {
+                    allSecedingCounties.push(COUNTIES[i]);
+                }
             }
         }
-
-        allSecedingCounties.push.apply(allSecedingCounties, secedingCounties);
     }
 
     console.log("Counties actually seceding this turn: " + allSecedingCounties);
@@ -512,7 +380,7 @@ function timeStep() {
             }
 
             currentCounty.state = currentCounty.desiredState;
-
+            console.log(currentCounty.id);
             document.getElementById("c" + currentCounty.id).childNodes[1].textContent = getLabel(currentCounty);
         }
 
@@ -522,31 +390,35 @@ function timeStep() {
     }
 
     // Now, check that states are still connected. If they're not, do some reabsorption flips.
-    for (let i = 0; i < STATES.length; i++) {
-        let currentState = STATES[i];
+    if (requireConnectedness) {
+        for (let i = 0; i < STATES.length; i++) {
+            let currentState = STATES[i];
 
-        if (currentState === "02" || currentState === "15") {  // Alaska and Hawaii
-            continue;
-        }
-
-        let connectedComponents = getConnectedComponents(currentState);
-        if (connectedComponents.length !== 1) {
-            console.log("State " + getStateName(currentState) + " has " + connectedComponents.length + " connected components!");
-
-            console.log(connectedComponents);
-
-            // Get the largest component
-            let bigComponentIndex = 0;
-            for (let j = 0; j < connectedComponents.length; j++) {
-                if (connectedComponents[j].length > connectedComponents[bigComponentIndex].length) {
-                    bigComponentIndex = j;
-                }
+            if (currentState === "02" || currentState === "15") {  // Alaska and Hawaii
+                continue;
             }
 
-            // Absorb the small components
-            absorb(connectedComponents, bigComponentIndex);
+            let connectedComponents = getConnectedComponents(currentState);
+            if (connectedComponents.length !== 1) {
+                console.log("State " + getStateName(currentState) + " has " + connectedComponents.length + " connected components!");
+
+                console.log(connectedComponents);
+
+                // Get the largest component
+                let bigComponentIndex = 0;
+                for (let j = 0; j < connectedComponents.length; j++) {
+                    if (connectedComponents[j].length > connectedComponents[bigComponentIndex].length) {
+                        bigComponentIndex = j;
+                    }
+                }
+
+                // Absorb the small components
+                absorb(connectedComponents, bigComponentIndex);
+            }
         }
     }
+
+    return allSecedingCounties.length;
 }
 
 function modeState(counties) {
