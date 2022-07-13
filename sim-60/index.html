@@ -5,7 +5,9 @@
     <title>Woohoo!</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;1,300;1,400&display=swap"
+          rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
             font-family: 'Open Sans', sans-serif;
@@ -46,6 +48,12 @@
             border-radius: 5px;
             padding: 5px;
             box-shadow: 1px 1px #221e1f;
+        }
+
+        button:disabled,
+        button[disabled] {
+            background-color: lightgrey;
+            cursor: not-allowed;
         }
 
         button:hover {
@@ -15574,7 +15582,11 @@
 <script src="magic.js"></script>
 <script src="ui.js"></script>
 <script>
-    // colorMap();
+    document.addEventListener('keyup', event => {
+        if (event.code === 'Space') {
+            runNiceStep();
+        }
+    });
 </script>
 </body>
 </html>
