@@ -3,7 +3,7 @@ const dataObj = JSON.parse(data);
 console.log(dataObj);
 console.log("HI!");
 
-const threshold = 0.20;
+const threshold = 0.00;
 const requireConnectednessDumb = false;
 
 function calculateLean(state) {
@@ -384,6 +384,10 @@ function timeStep() {
         let currentState = currentCounty.state;
         let potentialNewStates = [];
 
+        if (currentState === "02" || currentState === "15") {  // Alaska and Hawaii
+            continue;
+        }
+
         // First, check if it borders any other states to begin with.
         let adjacents = currentCounty.adjacents;
         for (let j = 0; j < adjacents.length; j++) {
@@ -462,6 +466,10 @@ function timeStep() {
         let currentState = STATES[i];
         let secedingCounties = [];
 
+        if (currentState === "02" || currentState === "15") {  // Alaska and Hawaii
+            continue;
+        }
+
         let currentStateCounties = getCountiesInState(currentState);
 
         // Sort counties by their desire to secede
@@ -512,6 +520,129 @@ function timeStep() {
         currentCounty.desiredState = currentCounty.state;
         currentCounty.claimedImprovement = -1;
     }
+
+    // Now, check that states are still connected. If they're not, do some reabsorption flips.
+    for (let i = 0; i < STATES.length; i++) {
+        let currentState = STATES[i];
+
+        if (currentState === "02" || currentState === "15") {  // Alaska and Hawaii
+            continue;
+        }
+
+        let connectedComponents = getConnectedComponents(currentState);
+        if (connectedComponents.length !== 1) {
+            console.log("State " + getStateName(currentState) + " has " + connectedComponents.length + " connected components!");
+
+            console.log(connectedComponents);
+
+            // Get the largest component
+            let bigComponentIndex = 0;
+            for (let j = 0; j < connectedComponents.length; j++) {
+                if (connectedComponents[j].length > connectedComponents[bigComponentIndex].length) {
+                    bigComponentIndex = j;
+                }
+            }
+
+            // Absorb the small components
+            absorb(connectedComponents, bigComponentIndex);
+        }
+    }
+}
+
+function modeState(counties) {
+    return dataObj[counties.sort((a, b) =>
+        counties.filter(v => dataObj[v].state === dataObj[a].state).length
+        - counties.filter(v => dataObj[v].state === dataObj[b].state).length
+    ).pop()].state;
+}
+
+function absorb(connectedComponents, exception) {
+    console.log("Calculating absorption...");
+
+    for (let i = 0; i < connectedComponents.length; i++) {
+        if (i === exception) {  // The largest component
+            continue;
+        }
+
+        // All other components: get which state (uniquely) borders it the most, and join that state
+        let neighbouringCounties = [];
+
+        // Add all the neighbours
+        for (let county of connectedComponents[i]) {
+            for (let neighbour of dataObj[county].adjacents) {
+                if (!neighbouringCounties.includes(neighbour)) {
+                    neighbouringCounties.push(neighbour);
+                }
+            }
+        }
+
+        console.log("Neighbouring counties are these:");
+        console.log(neighbouringCounties);
+        console.log("Most common neighbouring state is " + modeState(neighbouringCounties));
+
+        // Get the mode state
+        let bestState = modeState(neighbouringCounties);
+
+        // Have all the counties join it!
+        for (let county of connectedComponents[i]) {
+            dataObj[county].state = bestState;
+        }
+    }
+}
+
+
+function getConnectedComponents(state) {
+    // Get the list of neighbours that are in the state.
+    let stateCounties = getCountiesInState(state);
+
+    let components = [];
+    let allVisitedCounties = [];
+
+    while (allVisitedCounties.length !== stateCounties.length) {
+        // We simply do a BFS.
+        // Choose a starting node that has not already been visited.
+        let c = 0;
+        let source = stateCounties[c];
+        while (allVisitedCounties.includes(source.id)) {
+            source = stateCounties[++c];
+        }
+
+        let exploredIDs = [];
+
+        exploredIDs.push(source.id);
+
+        let q = [];
+        q.push(source);
+
+        while (q.length > 0) {
+            let v = q.shift();
+
+            let adjacents = v.adjacents;
+            for (let j = 0; j < adjacents.length; j++) {
+                let currAdj = dataObj[adjacents[j]];
+
+                // Ignore counties from other states
+                if (currAdj.state !== state) {
+                    continue;
+                }
+
+                // Ignore self-adjacencies
+                if (currAdj.id === v.id) {
+                    continue;
+                }
+
+                if (exploredIDs.indexOf(currAdj.id) === -1) {
+                    exploredIDs.push(currAdj.id);
+                    q.push(currAdj)
+                }
+            }
+        }
+
+        allVisitedCounties.push.apply(allVisitedCounties, exploredIDs.slice());
+        components.push(exploredIDs.slice());
+    }
+
+    return components;
 }
 
 function writeInfo() {
