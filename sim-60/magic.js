@@ -3,7 +3,7 @@ const dataObj = JSON.parse(data);
 console.log(dataObj);
 console.log("HI!");
 
-const threshold = 0.60;
+let threshold = 0.60;
 const requireConnectedness = true;
 
 function calculateLean(state) {
@@ -146,6 +146,58 @@ function colorMap() {
         let id = "c" + currentCounty.id;
 
         // console.log("Attempting id " + id);
+
+        if (document.getElementById(id) != null) { // Bedford city, VA or something
+            document.getElementById(id).style.fill = color;
+        }
+    }
+}
+
+let numberOfItems = 10000;
+let rb = new Rainbow();
+rb.setNumberRange(1, numberOfItems);
+rb.setSpectrum('#0000FF', '#FF0000');
+
+// function getColorFromLean(lean) {
+//     let calibrated = (lean + 0.7) / 1.4 * numberOfItems;
+//     return rb.colorAt(Math.floor(calibrated));
+// }
+
+function getColorFromLean(lean) {
+    let value = 100 - (50 - 100 * lean);
+
+    if (value > 100) {
+        value = 100.0;
+    }
+    if (value < 0) {
+        value = 0.0;
+    }
+
+    console.log("Value for lean " +lean +": " + value);
+
+    function hsl_col_perc(percent, start, end) {
+        var a = percent / 100,
+            b = (end - start) * a,
+            c = b + start;
+
+        // Return a CSS HSL string
+        return 'hsl('+c+', 100%, 50%)';
+    }
+
+    return hsl_col_perc(value, 240, 360);
+}
+
+function colorMapByPartisanLean() {
+    let stateLeans = calculateLeanForAllStates();
+
+    for (let i = 0; i < COUNTIES.length; i++) {
+        let currentCounty = dataObj[COUNTIES[i]];
+
+        let color = getColorFromLean(stateLeans.get(currentCounty.state));
+
+        let id = "c" + currentCounty.id;
+
+        console.log("Attempting id " + id + "; color=" + color);
 
         if (document.getElementById(id) != null) { // Bedford city, VA or something
             document.getElementById(id).style.fill = color;
@@ -418,7 +470,7 @@ function timeStep() {
         }
     }
 
-    return allSecedingCounties.length;
+    return allSecedingCounties;
 }
 
 function modeState(counties) {
@@ -549,9 +601,21 @@ function writeInfo() {
         }
 
         if (s[i].lean > 0) {
-            document.getElementById("info").innerHTML += "" + getStateName(s[i].state) + " has population " + s[i].population + ", and leans " + (100 * s[i].lean).toFixed(0) + " points to the right.<br>";
+            document.getElementById("info").innerHTML += "" + getStateName(s[i].state) + " has population " + nicePop(s[i].population) + ", and leans " + (100 * s[i].lean).toFixed(0) + " points to the right.<br>";
         } else {
-            document.getElementById("info").innerHTML += "" + getStateName(s[i].state) + " has population " + s[i].population + ", and leans " + (-100 * s[i].lean).toFixed(0) + " points to the left.<br>";
+            document.getElementById("info").innerHTML += "" + getStateName(s[i].state) + " has population " + nicePop(s[i].population) + ", and leans " + (-100 * s[i].lean).toFixed(0) + " points to the left.<br>";
         }
+    }
+}
+
+function nicePop(number) {
+    if (number > 1000000) {
+        let num = (number / 1000000.).toFixed(1);
+        return "<abbr title=\"" + number.toLocaleString() + "\">" + num + "M</abbr>";
+    } else if (number > 1000) {
+        let num = (number / 1000.).toFixed(1);
+        return "<abbr title=\"" + number.toLocaleString() + "\">" + num + "K</abbr>";
+    } else {
+        return number.toLocaleString();
     }
 }
