@@ -35,6 +35,7 @@ function runStep() {
     // electionResults(changes);
     colorFunction();
     writeInfo();
+    updateSenateResults();
 }
 
 function electionResults(changes) {
@@ -66,6 +67,7 @@ function runNiceStepToEquillibrium() {
     colorFunction();
     writeInfo();
     updateText();
+    updateSenateResults();
 
     if (changed.length > 0) {
         // console.log("Here are all the many changes:");

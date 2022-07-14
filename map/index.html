@@ -7,7 +7,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;1,300;1,400&display=swap"
           rel="stylesheet">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
             font-family: 'Open Sans', sans-serif;
@@ -39,6 +38,17 @@
             padding: 15px;
             height: 400px;
             overflow-y: scroll;
+        }
+
+        .seat {
+            width: 9px;
+            height: 30px;
+            display: inline-block;
+            background-color: red;
+            border-style: solid;
+            border-color: white;
+            border-width: 1px;
+            /*border-left: none;*/
         }
 
         button {
@@ -15581,6 +15591,19 @@
                 <summary>State info</summary>
                 <div id="info"></div>
             </details>
+            <details>
+                <summary>Senate control</summary>
+                <div id="senate">
+                    <div class="seat" title="Wyoming"></div>
+                    <div class="seat"></div>
+                    <div class="seat"></div>
+                    <div class="seat"></div>
+                    <div class="seat"></div>
+                </div>
+                <div id="senate-description">
+
+                </div>
+            </details>
         </div>
     </div>
 </div>
@@ -15593,6 +15616,7 @@
 <script src="ui.js"></script>
 <script>
     colorMap();
+    updateSenateResults();
 </script>
 <script>
     document.addEventListener('keyup', event => {

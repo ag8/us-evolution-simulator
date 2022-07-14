@@ -21,6 +21,12 @@ function updateConnectedness() {
 }
 
 function calculateLean(state) {
+    if (state === "02") {
+        return 0.1052;
+    } else if (state === "15") {
+        return -0.3006;
+    }
+
     let stateRepublicans = 0;
     let stateDemocrats = 0;
 
@@ -40,6 +46,79 @@ function calculateLean(state) {
     }
 
     return (stateRepublicans - stateDemocrats) / (stateRepublicans + stateDemocrats);
+}
+
+function getSenateSeatColor(lean) {
+    /**
+     * Colors stolen from 538
+     */
+
+    // console.log("Lean is " + lean + "");
+
+    if (lean < -0.3) {  // Solid D
+        return "#5768ac";
+    } else if (lean < -0.15) {  // Likely D
+        return "#9197c8";
+    } else if (lean < -0.05) { // Lean D
+        return "#c8cae3";
+    } else if (lean < 0.05) { // Toss-up
+        return "#eae3eb";
+    } else if (lean < 0.15) { // Lean R
+        return "#ffcec5";
+    } else if (lean < 0.3) { // Likely R
+        return "#ff998a";
+    } else {  // Solid R
+        return "#e24a41";
+    }
+}
+
+function updateSenateResults() {
+    let leans = calculateLeanForAllStates();
+
+    let senateDiv = document.getElementById("senate");
+    senateDiv.textContent = '';  // clear it
+
+    // Sort the results by lean
+    const sortedLeans = new Map([...leans.entries()].sort((a, b) => b[1] - a[1]));
+    // console.log(mapSort1);
+
+    let rProbableSeats = 0;
+    let dProbableSeats = 0;
+    let competitiveSeats = 0;
+    let rSeats = 0;
+    let dSeats = 0;
+
+    for (let [state, lean] of sortedLeans) {
+        if (state === "11") {
+            continue;
+        }
+        let div = document.createElement("div");
+        div.classList.add("seat");
+        div.title = lean < 0 ? getStateName(state) + " (" + -Math.floor(100 * lean).toFixed(0) + " points left)" : getStateName(state) + " (" + Math.floor(100 * lean).toFixed(0) + " points right)";
+        console.log("State is " + getStateName(state) + "; lean is " + lean + ", so color is " + getSenateSeatColor(lean) + "!");
+        div.style.backgroundColor = getSenateSeatColor(lean);
+
+        if (lean < 0) {
+            dSeats += 2;
+            if (lean < -0.05) {
+                dProbableSeats += 2;
+            } else {
+                competitiveSeats += 2;
+            }
+        } else {
+            rSeats += 2;
+            if (lean > 0.05) {
+                rProbableSeats += 2;
+            } else {
+                competitiveSeats += 2;
+            }
+        }
+
+        senateDiv.appendChild(div);
+    }
+
+    document.getElementById("senate-description").innerHTML = "Senate control: <b>R " + rSeats + "&ndash;" + dSeats + " D</b><br>";
+    document.getElementById("senate-description").innerHTML += "Probable R: " + rProbableSeats + "<br>Probable D: " + dProbableSeats + "<br>Toss-up: " + competitiveSeats + "";
 }
 
 function calculatePopulation(state) {
