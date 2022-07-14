@@ -1,8 +1,31 @@
 let step = 0;
 let realStep = 0;
 let text = "";
+let displaySenate = true;
+let displayPresidential = false;
 const shape = document.getElementsByTagName("svg")[0];
 writeInfo();
+
+function updateSenate() {
+    displaySenate = document.getElementById("sen").checked;
+
+    if (displaySenate) {
+        document.getElementById("senate-details").style.display = 'block';
+    } else {
+        document.getElementById("senate-details").style.display = 'none';
+    }
+}
+
+function updatePres() {
+    displayPresidential = document.getElementById("pres").checked;
+
+    if (displayPresidential) {
+        updatePresidentialResults();
+        document.getElementById("pres-details").style.display = 'block';
+    } else {
+        document.getElementById("pres-details").style.display = 'none';
+    }
+}
 
 let colorFunction = colorMap;
 
@@ -35,7 +58,12 @@ function runStep() {
     // electionResults(changes);
     colorFunction();
     writeInfo();
-    updateSenateResults();
+    if (displaySenate) {
+        updateSenateResults();
+    }
+    if (displayPresidential) {
+        updatePresidentialResults();
+    }
 }
 
 function electionResults(changes) {
@@ -67,7 +95,12 @@ function runNiceStepToEquillibrium() {
     colorFunction();
     writeInfo();
     updateText();
-    updateSenateResults();
+    if (displaySenate) {
+        updateSenateResults();
+    }
+    if (displayPresidential) {
+        updatePresidentialResults();
+    }
 
     if (changed.length > 0) {
         // console.log("Here are all the many changes:");

@@ -80,6 +80,14 @@
             width: 50px;
             margin-left: 10px;
         }
+
+        #senate-details {
+            display: block;
+        }
+
+        #pres-details {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -15571,6 +15579,13 @@
                                                                         onchange="updateConnectedness();"><br>
             <label for="delay">Simulation delay (ms):</label><input type="number" id="delay" onchange="updateDelay();"
                                                                     value="1000" style="width: 70px;"><br>
+            <label for="sen">Calculate Senate results?</label><input type="checkbox" id="sen" checked="checked"
+                                                                     onchange="updateSenate();"><br>
+
+            <label for="pres">Calculate Presidential results? <abbr
+                    title="Re-computes congressional reapportionment every step!">(very slow)</abbr></label><input
+                type="checkbox" id="pres"
+                onchange="updatePres();"><br>
             <br>
             <br>
             <button onclick="runNiceStep();">Step&rsaquo;&rsaquo;</button>
@@ -15591,7 +15606,7 @@
                 <summary>State info</summary>
                 <div id="info"></div>
             </details>
-            <details>
+            <details id="senate-details">
                 <summary>Senate control</summary>
                 <div id="senate">
                     <div class="seat" title="Wyoming"></div>
@@ -15601,6 +15616,12 @@
                     <div class="seat"></div>
                 </div>
                 <div id="senate-description">
+
+                </div>
+            </details>
+            <details id="pres-details">
+                <summary>Presidential elections</summary>
+                <div id="presidential-description">
 
                 </div>
             </details>

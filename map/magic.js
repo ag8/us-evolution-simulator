@@ -25,6 +25,8 @@ function calculateLean(state) {
         return 0.1052;
     } else if (state === "15") {
         return -0.3006;
+    } else if (state === "11") {
+        return -0.8893;
     }
 
     let stateRepublicans = 0;
@@ -95,7 +97,7 @@ function updateSenateResults() {
         let div = document.createElement("div");
         div.classList.add("seat");
         div.title = lean < 0 ? getStateName(state) + " (" + -Math.floor(100 * lean).toFixed(0) + " points left)" : getStateName(state) + " (" + Math.floor(100 * lean).toFixed(0) + " points right)";
-        console.log("State is " + getStateName(state) + "; lean is " + lean + ", so color is " + getSenateSeatColor(lean) + "!");
+        // console.log("State is " + getStateName(state) + "; lean is " + lean + ", so color is " + getSenateSeatColor(lean) + "!");
         div.style.backgroundColor = getSenateSeatColor(lean);
 
         if (lean < 0) {
@@ -119,6 +121,85 @@ function updateSenateResults() {
 
     document.getElementById("senate-description").innerHTML = "Senate control: <b>R " + rSeats + "&ndash;" + dSeats + " D</b><br>";
     document.getElementById("senate-description").innerHTML += "Probable R: " + rProbableSeats + "<br>Probable D: " + dProbableSeats + "<br>Toss-up: " + competitiveSeats + "";
+}
+
+function congressionalApportionmentHuntingtonHill() {
+    const totalPopulation = 331875814;
+
+    let stateDistricts = new Array(57).fill(0);
+
+    // Give each state one seat
+    for (let state of STATES) {
+        if (state === "11") {
+            continue;
+        }
+        stateDistricts[parseInt(state, 10)] = 1;
+    }
+
+    while (stateDistricts.reduce((a, b) => a + b, 0) < 435) {  // While all the congressional districts haven't been assigned
+        let mostPrioritizedIndex = 1;
+        let bestPriorityNumber = -1;
+
+        for (let state of STATES) {
+            if (state === "11") {
+                continue;
+            }
+
+            let currentSeats = stateDistricts[parseInt(state, 10)];
+            let currentPriorityNumber = calculatePopulation(state) / Math.sqrt(currentSeats * (currentSeats + 1));
+
+            if (currentPriorityNumber > bestPriorityNumber) {
+                bestPriorityNumber = currentPriorityNumber;
+                mostPrioritizedIndex = parseInt(state, 10);
+            }
+        }
+
+        // Assign the congressional seat to the most prioritized state
+        stateDistricts[mostPrioritizedIndex]++;
+    }
+
+    console.log("Total districts: " + stateDistricts.reduce((a, b) => a + b, 0));
+
+    let dict = new Map();
+
+    for (let i = 0; i < STATES.length; i++) {
+        let currentState = STATES[i];
+
+        let districts = stateDistricts[parseInt(currentState, 10)];
+        dict.set(currentState.toString(), districts);
+    }
+
+    return dict;
+}
+
+function updatePresidentialResults() {
+    // First, do congressional appointment using the Huntington-Hill method.
+    let districts = congressionalApportionmentHuntingtonHill();
+    let leans = calculateLeanForAllStates();
+
+    let rVotes = 0;
+    let dVotes = 3;  // D.C.
+
+    for (let state of STATES) {
+        if (state === "11") {
+            continue;
+        }
+        if (leans.get(state) < 0) {
+            dVotes += 2 + districts.get(state);
+        } else {
+            rVotes += 2 + districts.get(state);
+        }
+    }
+
+    if (rVotes > dVotes) {
+        document.getElementById("presidential-description").innerHTML = "<b>Trump " + rVotes + "</b>&ndash;" + dVotes + " Biden";
+    } else if (dVotes > rVotes) {
+        document.getElementById("presidential-description").innerHTML = "Trump " + rVotes + "&ndash;<b>" + dVotes + " Biden</b>";
+    } else {
+        document.getElementById("presidential-description").innerHTML = "Trump " + rVotes + "&ndash;" + dVotes + " Biden</b>";
+    }
+
+    console.log("Total electoral votes: " + (rVotes - -dVotes));
 }
 
 function calculatePopulation(state) {

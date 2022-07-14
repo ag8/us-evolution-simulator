@@ -40,6 +40,17 @@
             overflow-y: scroll;
         }
 
+        .seat {
+            width: 9px;
+            height: 30px;
+            display: inline-block;
+            background-color: red;
+            border-style: solid;
+            border-color: white;
+            border-width: 1px;
+            /*border-left: none;*/
+        }
+
         button {
             font-size: 24px;
             background-color: aquamarine;
@@ -15570,6 +15581,25 @@
                 <summary>State info</summary>
                 <div id="info"></div>
             </details>
+            <details>
+                <summary>Senate control</summary>
+                <div id="senate">
+                    <div class="seat" title="Wyoming"></div>
+                    <div class="seat"></div>
+                    <div class="seat"></div>
+                    <div class="seat"></div>
+                    <div class="seat"></div>
+                </div>
+                <div id="senate-description">
+
+                </div>
+            </details>
+<!--            <details>-->
+<!--                <summary>Presidential elections</summary>-->
+<!--                <div id="presidential-description">-->
+<!---->
+<!--                </div>-->
+<!--            </details>-->
         </div>
     </div>
 </div>
@@ -15581,6 +15611,8 @@
 <script src="magic.js"></script>
 <script src="ui.js"></script>
 <script>
+    updateSenateResults();
+    // updatePresidentialResults();
     document.addEventListener('keyup', event => {
         if (event.code === 'Space') {
             runNiceStep();

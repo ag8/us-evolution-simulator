@@ -149,6 +149,8 @@ function runStep() {
     electionResults(changes);
     colorFunction();
     writeInfo();
+    updateSenateResults();
+    // updatePresidentialResults();
 
     return changes;
 }
