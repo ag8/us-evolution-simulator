@@ -765,9 +765,9 @@ function writeInfo() {
         }
 
         if (s[i].lean > 0) {
-            document.getElementById("info").innerHTML += "" + getStateName(s[i].state) + " has population " + nicePop(s[i].population) + ", and leans " + (100 * s[i].lean).toFixed(0) + " points to the right.<br>";
+            document.getElementById("info").innerHTML += "" + getStateName(s[i].state) + " has " + nicePop(s[i].population) + " people, and leans " + (100 * s[i].lean).toFixed(0) + " points to the right.<br>";
         } else {
-            document.getElementById("info").innerHTML += "" + getStateName(s[i].state) + " has population " + nicePop(s[i].population) + ", and leans " + (-100 * s[i].lean).toFixed(0) + " points to the left.<br>";
+            document.getElementById("info").innerHTML += "" + getStateName(s[i].state) + " has " + nicePop(s[i].population) + " people, and leans " + (-100 * s[i].lean).toFixed(0) + " points to the left.<br>";
         }
     }
 }
